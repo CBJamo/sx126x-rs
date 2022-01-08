@@ -74,10 +74,9 @@ where
             //  Prevent a second write
             debug_assert!(!TRANSFERRED);
 
-            //  Copy the data to the buffer, write later
-            for i in 0..words.len() {
-                BUF[BUFLEN + i] = words[i];
-            }
+            //  Copy the transmit data to the buffer, write later
+            BUF[BUFLEN..(BUFLEN + words.len())]
+                .clone_from_slice(words);
             BUFLEN += words.len();
         }
         Ok(())
@@ -95,19 +94,17 @@ where
             //  Prevent a second transfer
             debug_assert!(!TRANSFERRED);
 
-            //  Copy the data to the buffer
-            for i in 0..words.len() {
-                BUF[BUFLEN + i] = words[i];
-            }
+            //  Copy the transmit data to the buffer
+            BUF[BUFLEN..(BUFLEN + words.len())]
+                .clone_from_slice(words);
             BUFLEN += words.len();
 
             //  Transfer the data over SPI
-            let res = self.spi.transfer(&mut BUF[0..BUFLEN]).map_err(SpiError::Transfer);
+            let res = self.spi.transfer(&mut BUF[0..BUFLEN])
+                .map_err(SpiError::Transfer);
 
             //  Copy the result from SPI
-            for i in 0..words.len() {
-                words[i] = BUF[BUFLEN - words.len() + i];
-            }
+            words.clone_from_slice(&BUF[BUFLEN - words.len()..BUFLEN]);
 
             //  Empty the buffer
             BUFLEN = 0;
