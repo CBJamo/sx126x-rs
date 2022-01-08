@@ -177,7 +177,7 @@ where
     ) -> Result<Status, SxError<TSPIERR, TPINERR>> {
         let mut spi = self.slave_select(spi, delay)?;
         let mut result = [NOP];
-        spi.write(&mut [0xC0])
+        spi.write(&[0xC0])
             .and_then(|_| spi.transfer(&mut result))?;
 
         Ok(result[0].into())
@@ -235,12 +235,12 @@ where
         result: &mut [u8],
     ) -> Result<(), SxError<TSPIERR, TPINERR>> {
         debug_assert!(result.len() >= 1);
-        let mut start_addr = start_addr.to_be_bytes();
+        let start_addr = start_addr.to_be_bytes();
         let mut spi = self.slave_select(spi, delay)?;
 
-        spi.write(&mut [0x1D])
-            .and_then(|_| spi.write(&mut start_addr))
-            .and_then(|_| spi.write(&mut [0x00]))
+        spi.write(&[0x1D])
+            .and_then(|_| spi.write(&start_addr))
+            .and_then(|_| spi.write(&[0x00]))
             .and_then(|_| spi.transfer(result))?;
         Ok(())
     }
@@ -268,8 +268,8 @@ where
         result: &mut [u8],
     ) -> Result<(), SxError<TSPIERR, TPINERR>> {
         let mut spi = self.slave_select(spi, delay)?;
-        let mut header = [0x1E, offset, NOP];
-        spi.write(&mut header)
+        let header = [0x1E, offset, NOP];
+        spi.write(&header)
             .and_then(|_| spi.transfer(result))
             .map(|_| {})
             .map_err(Into::into)
@@ -319,7 +319,7 @@ where
     ) -> Result<DeviceErrors, SxError<TSPIERR, TPINERR>> {
         let mut spi = self.slave_select(spi, delay)?;
         let mut result = [NOP; 2];
-        spi.write(&mut [0x17, NOP])
+        spi.write(&[0x17, NOP])
             .and_then(|_| spi.transfer(&mut result))?;
         Ok(DeviceErrors::from(u16::from_le_bytes(result)))
     }
@@ -550,7 +550,7 @@ where
     ) -> Result<RxBufferStatus, SxError<TSPIERR, TPINERR>> {
         let mut spi = self.slave_select(spi, delay)?;
         let mut result = [NOP, NOP];
-        spi.write(&mut [0x13, NOP])
+        spi.write(&[0x13, NOP])
             .and_then(|_| spi.transfer(&mut result))?;
 
         Ok(result.into())
