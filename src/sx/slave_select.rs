@@ -23,7 +23,13 @@ impl<TNSS: OutputPin> SlaveSelect<TNSS> {
         &'spi mut self,
         spi: &'spi mut TSPI,
     ) -> Result<SlaveSelectGuard<TNSS, TSPI>, PinError<<TNSS as OutputPin>::Error>> {
+        //  Check that buffer is empty
+        debug_assert!(unsafe { BUFLEN } == 0);
+
+        //  Set Chip Select to Low
         self.nss.set_low().map_err(PinError::Output)?;
+
+        //  Return the guard
         Ok(SlaveSelectGuard {
             nss: &mut self.nss,
             spi,
@@ -35,6 +41,20 @@ impl<'nss, 'spi, TNSS: OutputPin, TSPI: Write<u8> + Transfer<u8>> Drop
     for SlaveSelectGuard<'nss, 'spi, TNSS, TSPI>
 {
     fn drop(&mut self) {
+        unsafe {
+            if BUFLEN > 0 {
+                //  Write the data over SPI
+                debug_assert!(!TRANSFERRED);
+                self.spi.write(&BUF[0..BUFLEN])
+                    .unwrap_or_default();
+                
+                //  Empty the buffer
+                BUFLEN = 0;
+                TRANSFERRED = false;
+            }    
+        }
+
+        //  Set Chip Select to High
         let _ = self.nss.set_high();
     }
 }
@@ -47,7 +67,14 @@ where
     type Error = SpiError<TSPIERR>;
 
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
-        self.spi.write(words).map_err(SpiError::Write)
+        unsafe {
+            //  Copy the data to the buffer, write later
+            for i in 0..words.len() {
+                BUF[BUFLEN + i] = words[i];
+            }
+            BUFLEN += words.len();
+        }
+        Ok(())
     }
 }
 
@@ -58,6 +85,39 @@ where
 {
     type Error = SpiError<TSPIERR>;
     fn transfer<'w>(&mut self, words: &'w mut [u8]) -> Result<&'w [u8], Self::Error> {
-        self.spi.transfer(words).map_err(SpiError::Transfer)
+        unsafe {
+            //  Prevent a second transfer
+            debug_assert!(!TRANSFERRED);
+
+            //  Copy the data to the buffer
+            for i in 0..words.len() {
+                BUF[BUFLEN + i] = words[i];
+            }
+            BUFLEN += words.len();
+
+            //  Transfer the data over SPI
+            let res = self.spi.transfer(&mut BUF[0..BUFLEN]).map_err(SpiError::Transfer);
+
+            //  Copy the result from SPI
+            for i in 0..words.len() {
+                words[i] = BUF[BUFLEN - words.len() + i];
+            }
+
+            //  Empty the buffer
+            BUFLEN = 0;
+
+            //  Prevent a second write or transfer
+            TRANSFERRED = true;
+            res
+        }
     }
 }
+
+/// Buffer for SPI Transfer
+static mut BUF: [ u8; 64 ] = [ 0; 64 ];
+
+/// Length of buffer for SPI Transfer
+static mut BUFLEN: usize = 0;
+
+/// True if we have just executed an SPI Transfer
+static mut TRANSFERRED: bool = false;
