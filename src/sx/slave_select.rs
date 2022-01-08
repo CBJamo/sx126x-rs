@@ -24,7 +24,10 @@ impl<TNSS: OutputPin> SlaveSelect<TNSS> {
         spi: &'spi mut TSPI,
     ) -> Result<SlaveSelectGuard<TNSS, TSPI>, PinError<<TNSS as OutputPin>::Error>> {
         //  Check that buffer is empty
-        debug_assert!(unsafe { BUFLEN } == 0);
+        unsafe {
+            debug_assert!(BUFLEN == 0);
+            debug_assert!(!TRANSFERRED);
+        }
 
         //  Set Chip Select to Low
         self.nss.set_low().map_err(PinError::Output)?;
@@ -50,8 +53,8 @@ impl<'nss, 'spi, TNSS: OutputPin, TSPI: Write<u8> + Transfer<u8>> Drop
                 
                 //  Empty the buffer
                 BUFLEN = 0;
-                TRANSFERRED = false;
             }    
+            TRANSFERRED = false;
         }
 
         //  Set Chip Select to High
@@ -68,6 +71,9 @@ where
 
     fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
         unsafe {
+            //  Prevent a second write
+            debug_assert!(!TRANSFERRED);
+
             //  Copy the data to the buffer, write later
             for i in 0..words.len() {
                 BUF[BUFLEN + i] = words[i];
