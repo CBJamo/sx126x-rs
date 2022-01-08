@@ -116,8 +116,8 @@ where
     }
 }
 
-/// Buffer for SPI Transfer
-static mut BUF: [ u8; 64 ] = [ 0; 64 ];
+/// Buffer for SPI Transfer. Max packet size (256) + 2 bytes for Write Buffer Command.
+static mut BUF: [ u8; 258 ] = [ 0; 258 ];
 
 /// Length of buffer for SPI Transfer
 static mut BUFLEN: usize = 0;
