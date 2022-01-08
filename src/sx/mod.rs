@@ -240,6 +240,7 @@ where
 
         spi.write(&mut [0x1D])
             .and_then(|_| spi.write(&mut start_addr))
+            .and_then(|_| spi.write(&mut [0x00]))
             .and_then(|_| spi.transfer(result))?;
         Ok(())
     }
