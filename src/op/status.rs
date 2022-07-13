@@ -16,7 +16,7 @@ impl core::fmt::Debug for Status {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ChipMode {
     StbyRC = 0x02,
     StbyXOSC = 0x03,
@@ -26,7 +26,7 @@ pub enum ChipMode {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CommandStatus {
     DataAvailable = 0x02,
     CommandTimeout = 0x03,
