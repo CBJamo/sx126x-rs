@@ -13,9 +13,9 @@ use crate::reg::*;
 // use err::OutputPinError;
 use slave_select::*;
 
-use self::err::{PinError, SxError};
+pub use self::err::{PinError, SxError};
 
-type Pins<TNSS, TNRST, TBUSY, TANT, TDIO1> = (TNSS, TNRST, TBUSY, TANT, TDIO1);
+type Pins<TNSS, TNRST, TBUSY, TDIO1> = (TNSS, TNRST, TBUSY, TDIO1);
 
 const NOP: u8 = 0x00;
 
@@ -31,35 +31,31 @@ pub fn calc_rf_freq(rf_frequency: f32, f_xtal: f32) -> u32 {
 }
 
 /// Wrapper around a Semtech SX1261/62 LoRa modem
-pub struct SX126x<TSPI, TNSS: OutputPin, TNRST, TBUSY, TANT, TDIO1> {
+pub struct SX126x<TSPI, TNSS: OutputPin, TNRST, TBUSY, TDIO1> {
     spi: PhantomData<TSPI>,
     slave_select: SlaveSelect<TNSS>,
     nrst_pin: TNRST,
     busy_pin: TBUSY,
-    ant_pin: TANT,
     dio1_pin: TDIO1,
 }
 
-impl<TSPI, TNSS, TNRST, TBUSY, TANT, TDIO1, TSPIERR, TPINERR>
-    SX126x<TSPI, TNSS, TNRST, TBUSY, TANT, TDIO1>
+impl<TSPI, TNSS, TNRST, TBUSY, TDIO1, TSPIERR, TPINERR> SX126x<TSPI, TNSS, TNRST, TBUSY, TDIO1>
 where
     TPINERR: core::fmt::Debug,
     TSPI: Write<u8, Error = TSPIERR> + Transfer<u8, Error = TSPIERR>,
     TNSS: OutputPin<Error = TPINERR>,
     TNRST: OutputPin<Error = TPINERR>,
     TBUSY: InputPin<Error = TPINERR>,
-    TANT: OutputPin<Error = TPINERR>,
     TDIO1: InputPin<Error = TPINERR>,
 {
     // Create a new SX126x
-    pub fn new(pins: Pins<TNSS, TNRST, TBUSY, TANT, TDIO1>) -> Self {
-        let (nss_pin, nrst_pin, busy_pin, ant_pin, dio1_pin) = pins;
+    pub fn new(pins: Pins<TNSS, TNRST, TBUSY, TDIO1>) -> Self {
+        let (nss_pin, nrst_pin, busy_pin, dio1_pin) = pins;
         Self {
             spi: PhantomData,
             slave_select: SlaveSelect::new(nss_pin),
             nrst_pin,
             busy_pin,
-            ant_pin,
             dio1_pin,
         }
     }
@@ -177,8 +173,7 @@ where
     ) -> Result<Status, SxError<TSPIERR, TPINERR>> {
         let mut spi = self.slave_select(spi, delay)?;
         let mut result = [NOP];
-        spi.write(&[0xC0])
-            .and_then(|_| spi.transfer(&mut result))?;
+        spi.write(&[0xC0]).and_then(|_| spi.transfer(&mut result))?;
 
         Ok(result[0].into())
     }
@@ -326,21 +321,10 @@ where
 
     /// Reset the device py pulling nrst low for a while
     pub fn reset(&mut self, delay: &mut impl DelayUs<u32>) -> Result<(), PinError<TPINERR>> {
-        cortex_m::interrupt::free(|_| {
-            self.nrst_pin.set_low().map_err(PinError::Output)?;
-            // 8.1: The pin should be held low for typically 100 μs for the Reset to happen
-            delay.delay_us(200);
-            self.nrst_pin.set_high().map_err(PinError::Output)
-        })
-    }
-
-    /// Enable antenna
-    pub fn set_ant_enabled(&mut self, enabled: bool) -> Result<(), TPINERR> {
-        if enabled {
-            self.ant_pin.set_high()
-        } else {
-            self.ant_pin.set_low()
-        }
+        self.nrst_pin.set_low().map_err(PinError::Output)?;
+        // 8.1: The pin should be held low for typically 100 μs for the Reset to happen
+        delay.delay_us(200);
+        self.nrst_pin.set_high().map_err(PinError::Output)
     }
 
     /// Configure IRQ
@@ -418,6 +402,52 @@ where
         spi.transfer(&mut timeout)?;
         Ok(timeout[0].into())
     }
+
+    pub fn set_regulator_mode<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+        mode: RegulatorMode
+    ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        let mut spi = self.slave_select(spi, delay)?;
+
+        let _ = spi.write(&[0x96, mode as u8]);
+        Ok(())
+    }
+
+    pub fn set_cad<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+    ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        let mut spi = self.slave_select(spi, delay)?;
+
+        let _ = spi.write(&[0xC5]);
+        Ok(())
+    }
+
+    pub fn set_tx_continuous_wave<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+    ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        let mut spi = self.slave_select(spi, delay)?;
+
+        let _ = spi.write(&[0xD1]);
+        Ok(())
+    }
+
+    pub fn set_tx_infinite_preamble<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+    ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        let mut spi = self.slave_select(spi, delay)?;
+
+        let _ = spi.write(&[0xD2]);
+        Ok(())
+    }
+
 
     /// Set packet parameters
     pub fn set_packet_params<'spi>(
@@ -560,17 +590,13 @@ where
     fn wait_on_busy(&mut self, delay: &mut impl DelayUs<u32>) -> Result<(), PinError<TPINERR>> {
         // 8.3.1: The max value for T SW from NSS rising edge to the BUSY rising edge is, in all cases, 600 ns
         delay.delay_us(1);
-        while let Ok(true) = self.busy_pin.is_high() {
-            cortex_m::asm::nop();
-        }
+        while let Ok(true) = self.busy_pin.is_high() {}
         Ok(())
     }
 
     /// Busily wait for the dio1 pin to go high
-    fn wait_on_dio1(&mut self)-> Result<(), PinError<TPINERR>> {
-        while let Ok(true) = self.dio1_pin.is_low() {
-            cortex_m::asm::nop();
-        }
+    fn wait_on_dio1(&mut self) -> Result<(), PinError<TPINERR>> {
+        while let Ok(true) = self.dio1_pin.is_low() {}
         Ok(())
     }
 
