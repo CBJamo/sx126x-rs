@@ -28,7 +28,7 @@ impl From<u32> for RxTxTimeout {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum RampTime {
     /// 10us
     Ramp10u = 0x00,
@@ -48,6 +48,7 @@ pub enum RampTime {
     Ramp3400u = 0x07,
 }
 
+#[derive(Debug)]
 pub struct TxParams {
     power_dbm: i8,
     ramp_time: RampTime,
@@ -89,12 +90,13 @@ impl TxParams {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum DeviceSel {
     SX1262 = 0x00,
     SX1261 = 0x01,
 }
 
+#[derive(Debug)]
 pub struct PaConfig {
     pa_duty_cycle: u8,
     hp_max: u8,
