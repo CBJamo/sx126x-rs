@@ -586,6 +586,20 @@ where
         Ok(result.into())
     }
 
+    /// Get packet Status, containing RSSIs
+    pub fn get_packet_status<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+    ) -> Result<PacketStatus, SxError<TSPIERR, TPINERR>> {
+        let mut spi = self.slave_select(spi, delay)?;
+        let mut result = [NOP, NOP, NOP, NOP];
+        spi.write(&[0x14, NOP])
+            .and_then(|_| spi.transfer(&mut result))?;
+
+        Ok(result.into())
+    }
+
     /// Busily wait for the busy pin to go low
     fn wait_on_busy(&mut self, delay: &mut impl DelayUs<u32>) -> Result<(), PinError<TPINERR>> {
         // 8.3.1: The max value for T SW from NSS rising edge to the BUSY rising edge is, in all cases, 600 ns

@@ -15,11 +15,58 @@ impl Into<[u8; 9]> for PacketParams {
     }
 }
 
+#[derive(Debug)]
+pub struct PacketStatus {
+    inner: [u8; 4],
+}
+
+impl From<[u8; 4]> for PacketStatus {
+    fn from(buf: [u8; 4]) -> Self {
+        Self { inner: buf }
+    }
+}
+
 pub mod lora {
     use super::PacketParams;
 
+    #[allow(dead_code)]
+    #[derive(Debug)]
+    pub struct LoRaPacketStatus {
+        /// Average over last packet received of RSSI in dBm
+        rssi_pkt: i16,
+        /// Estimation of SNR on last packet received in dBm
+        snr_pkt: i8,
+        /// Estimation of RSSI of the LoRa® signal (after despreading) on last packet received
+        signal_rssi_pkt: i16,
+    }
+
+    impl LoRaPacketStatus {
+        pub fn get_rssi_pkt(&self) -> i16 {
+            self.rssi_pkt
+        }
+
+        pub fn get_snr_pkt(&self) -> i8 {
+            self.snr_pkt
+        }
+
+        pub fn get_signal_rssi_pkt(&self) -> i8 {
+            self.snr_pkt
+        }
+    }
+
+    use crate::op::PacketStatus;
+    impl From<PacketStatus> for LoRaPacketStatus {
+        fn from(status: PacketStatus) -> Self {
+            Self {
+                rssi_pkt: (-1 * status.inner[1] as i16) / 2,
+                snr_pkt: (status.inner[2] as i8) / 4,
+                signal_rssi_pkt: (-1 * status.inner[3] as i16) / 2,
+            }
+        }
+    }
+
     #[repr(u8)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug)]
     pub enum LoRaHeaderType {
         /// Variable length packet (explicit header)
         VarLen = 0x00,
@@ -28,7 +75,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug)]
     pub enum LoRaCrcType {
         /// CRC off
         CrcOff = 0x00,
@@ -37,7 +84,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug)]
     pub enum LoRaInvertIq {
         /// Standard IQ setup
         Standard = 0x00,
@@ -45,6 +92,7 @@ pub mod lora {
         Inverted = 0x01,
     }
 
+    #[derive(Debug)]
     pub struct LoRaPacketParams {
         /// preamble length: number of symbols sent as preamble
         /// The preamble length is a 16-bit value which represents
