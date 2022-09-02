@@ -5,13 +5,17 @@ pub enum PacketType {
     LoRa = 0x01,
 }
 
-pub struct PacketParams {
-    inner: [u8; 9],
+pub enum PacketParams {
+    GFSK(gfsk::GFSKPacketParams),
+    LoRa(lora::LoRaPacketParams),
 }
 
 impl Into<[u8; 9]> for PacketParams {
     fn into(self) -> [u8; 9] {
-        self.inner
+        match self {
+            crate::op::PacketParams::GFSK(_) => [0u8; 9],
+            crate::op::PacketParams::LoRa(params) => params.into(),
+        }
     }
 }
 
@@ -26,9 +30,11 @@ impl From<[u8; 4]> for PacketStatus {
     }
 }
 
-pub mod lora {
-    use super::PacketParams;
+pub mod gfsk {
+    pub struct GFSKPacketParams {}
+}
 
+pub mod lora {
     #[allow(dead_code)]
     #[derive(Debug)]
     pub struct LoRaPacketStatus {
@@ -84,7 +90,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum LoRaInvertIq {
         /// Standard IQ setup
         Standard = 0x00,
@@ -109,26 +115,24 @@ pub mod lora {
         /// CRC type
         crc_type: LoRaCrcType, // 5
         /// Invert IW
-        invert_iq: LoRaInvertIq,
+        pub invert_iq: LoRaInvertIq,
     }
 
-    impl Into<PacketParams> for LoRaPacketParams {
-        fn into(self) -> PacketParams {
+    impl Into<[u8; 9]> for LoRaPacketParams {
+        fn into(self) -> [u8; 9] {
             let preamble_len = self.preamble_len.to_be_bytes();
 
-            PacketParams {
-                inner: [
-                    preamble_len[0],
-                    preamble_len[1],
-                    self.header_type as u8,
-                    self.payload_len,
-                    self.crc_type as u8,
-                    self.invert_iq as u8,
-                    0x00,
-                    0x00,
-                    0x00,
-                ],
-            }
+            [
+                preamble_len[0],
+                preamble_len[1],
+                self.header_type as u8,
+                self.payload_len,
+                self.crc_type as u8,
+                self.invert_iq as u8,
+                0x00,
+                0x00,
+                0x00,
+            ]
         }
     }
 

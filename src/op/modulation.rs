@@ -1,16 +1,25 @@
-pub struct ModParams {
-    inner: [u8; 8],
+#[derive(Copy, Clone)]
+pub enum ModParams {
+    GFSK(gfsk::GFSKModParams),
+    LoRa(lora::LoraModParams),
 }
 
 impl Into<[u8; 8]> for ModParams {
     fn into(self) -> [u8; 8] {
-        self.inner
+        match self {
+            crate::op::ModParams::GFSK(_) => [0u8; 8],
+            crate::op::ModParams::LoRa(params) => params.into(),
+        }
     }
 }
 
-pub mod lora {
-    use super::ModParams;
+pub mod gfsk {
     #[derive(Copy, Clone)]
+    pub struct GFSKModParams {}
+}
+
+pub mod lora {
+    #[derive(Copy, Clone, Debug)]
     #[repr(u8)]
     pub enum LoRaSpreadFactor {
         SF5 = 0x05,
@@ -23,7 +32,7 @@ pub mod lora {
         SF12 = 0x0C,
     }
 
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     #[repr(u8)]
     pub enum LoRaBandWidth {
         /// 7.81 kHz
@@ -48,7 +57,7 @@ pub mod lora {
         BW500 = 0x06,
     }
 
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone, Debug)]
     #[repr(u8)]
     pub enum LoraCodingRate {
         CR4_5 = 0x01,
@@ -57,6 +66,7 @@ pub mod lora {
         CR4_8 = 0x04,
     }
 
+    #[derive(Copy, Clone, Debug)]
     pub struct LoraModParams {
         spread_factor: LoRaSpreadFactor,
         bandwidth: LoRaBandWidth,
@@ -89,27 +99,29 @@ pub mod lora {
             self.coding_rate = coding_rate;
             self
         }
-        
+
         pub fn set_low_dr_opt(mut self, low_dr_opt: bool) -> Self {
             self.low_dr_opt = low_dr_opt;
             self
         }
+
+        pub fn get_bandwidth(self) -> LoRaBandWidth {
+            self.bandwidth
+        }
     }
 
-    impl Into<ModParams> for LoraModParams {
-        fn into(self) -> ModParams {
-            ModParams {
-                inner: [
-                    self.spread_factor as u8,
-                    self.bandwidth as u8,
-                    self.coding_rate as u8,
-                    self.low_dr_opt as u8,
-                    0x00,
-                    0x00,
-                    0x00,
-                    0x00,
-                ],
-            }
+    impl Into<[u8; 8]> for LoraModParams {
+        fn into(self) -> [u8; 8] {
+            [
+                self.spread_factor as u8,
+                self.bandwidth as u8,
+                self.coding_rate as u8,
+                self.low_dr_opt as u8,
+                0x00,
+                0x00,
+                0x00,
+                0x00,
+            ]
         }
     }
 }

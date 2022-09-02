@@ -14,6 +14,8 @@ use crate::reg::*;
 use slave_select::*;
 
 pub use self::err::{PinError, SxError};
+use crate::op::modulation::lora::LoRaBandWidth;
+use crate::sx::packet::lora::LoRaInvertIq;
 
 type Pins<TNSS, TNRST, TBUSY, TDIO1> = (TNSS, TNRST, TBUSY, TDIO1);
 
@@ -407,7 +409,7 @@ where
         &mut self,
         spi: &'spi mut TSPI,
         delay: &mut impl DelayUs<u32>,
-        mode: RegulatorMode
+        mode: RegulatorMode,
     ) -> Result<(), SxError<TSPIERR, TPINERR>> {
         let mut spi = self.slave_select(spi, delay)?;
 
@@ -448,7 +450,6 @@ where
         Ok(())
     }
 
-
     /// Set packet parameters
     pub fn set_packet_params<'spi>(
         &mut self,
@@ -456,11 +457,45 @@ where
         delay: &mut impl DelayUs<u32>,
         params: PacketParams,
     ) -> Result<(), SxError<TSPIERR, TPINERR>> {
-        let mut spi = self.slave_select(spi, delay)?;
+        match params {
+            crate::op::PacketParams::GFSK(_) => {}
+            crate::op::PacketParams::LoRa(ref params) => {
+                self.inverted_iq_workaround(spi, delay, params.invert_iq)?;
+            }
+        }
         let params: [u8; 9] = params.into();
+        let mut spi = self.slave_select(spi, delay)?;
         spi.write(&[0x8C])
             .and_then(|_| spi.write(&params))
             .map_err(Into::into)
+    }
+
+    /// Apply inverted Iq workaround
+    pub fn inverted_iq_workaround<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+        inverted_iq: LoRaInvertIq,
+    ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        // Inverted IQ workaround
+        let mut workaround = [0u8; 1];
+        self.read_register(
+            spi,
+            delay,
+            crate::reg::Register::IqPolaritySetup as u16,
+            &mut workaround,
+        )?;
+        if inverted_iq == LoRaInvertIq::Inverted {
+            workaround[0] &= 0xFB;
+        } else {
+            workaround[0] |= 0x04;
+        }
+        self.write_register(
+            spi,
+            delay,
+            crate::reg::Register::IqPolaritySetup,
+            &mut workaround,
+        )
     }
 
     /// Set modulation parameters
@@ -470,11 +505,46 @@ where
         delay: &mut impl DelayUs<u32>,
         params: ModParams,
     ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        match params {
+            crate::op::ModParams::GFSK(_) => {}
+            crate::op::ModParams::LoRa(params) => {
+                self.lora_500khz_workaround(spi, delay, params.get_bandwidth())?;
+            }
+        }
         let mut spi = self.slave_select(spi, delay)?;
         let params: [u8; 8] = params.into();
         spi.write(&[0x8B])
             .and_then(|_| spi.write(&params))
             .map_err(Into::into)
+    }
+
+    /// Set modulation parameters with lora 500kHz quality workaround
+    pub fn lora_500khz_workaround<'spi>(
+        &mut self,
+        spi: &'spi mut TSPI,
+        delay: &mut impl DelayUs<u32>,
+        bandwidth: LoRaBandWidth,
+    ) -> Result<(), SxError<TSPIERR, TPINERR>> {
+        let mut workaround = [0u8; 1];
+        self.read_register(
+            spi,
+            delay,
+            crate::reg::Register::TxModulaton as u16,
+            &mut workaround,
+        )?;
+
+        if bandwidth == crate::op::modulation::lora::LoRaBandWidth::BW500 {
+            workaround[0] &= 0xFB;
+        } else {
+            workaround[0] |= 0x04;
+        }
+
+        self.write_register(
+            spi,
+            delay,
+            crate::reg::Register::TxModulaton,
+            &mut workaround,
+        )
     }
 
     /// Set TX parameters
@@ -557,7 +627,7 @@ where
             .set_crc_type(crc_type)
             .into();
 
-        self.set_packet_params(spi, delay, params)?;
+        self.set_packet_params(spi, delay, PacketParams::LoRa(params))?;
 
         // Set tx mode
         let status = self.set_tx(spi, delay, timeout)?;
