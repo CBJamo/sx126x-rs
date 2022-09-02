@@ -72,7 +72,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum LoRaHeaderType {
         /// Variable length packet (explicit header)
         VarLen = 0x00,
@@ -81,7 +81,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     pub enum LoRaCrcType {
         /// CRC off
         CrcOff = 0x00,
@@ -98,7 +98,7 @@ pub mod lora {
         Inverted = 0x01,
     }
 
-    #[derive(Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     pub struct LoRaPacketParams {
         /// preamble length: number of symbols sent as preamble
         /// The preamble length is a 16-bit value which represents
@@ -115,7 +115,7 @@ pub mod lora {
         /// CRC type
         crc_type: LoRaCrcType, // 5
         /// Invert IW
-        pub invert_iq: LoRaInvertIq,
+        invert_iq: LoRaInvertIq,
     }
 
     impl Into<[u8; 9]> for LoRaPacketParams {
@@ -172,6 +172,10 @@ pub mod lora {
         pub fn set_invert_iq(mut self, invert_iq: LoRaInvertIq) -> Self {
             self.invert_iq = invert_iq;
             self
+        }
+
+        pub fn get_invert_iq(&self) -> LoRaInvertIq {
+            self.invert_iq
         }
     }
 }

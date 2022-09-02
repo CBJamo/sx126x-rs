@@ -460,7 +460,7 @@ where
         match params {
             crate::op::PacketParams::GFSK(_) => {}
             crate::op::PacketParams::LoRa(ref params) => {
-                self.inverted_iq_workaround(spi, delay, params.invert_iq)?;
+                self.inverted_iq_workaround(spi, delay, params.get_invert_iq())?;
             }
         }
         let params: [u8; 9] = params.into();

@@ -19,7 +19,7 @@ pub mod gfsk {
 }
 
 pub mod lora {
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     #[repr(u8)]
     pub enum LoRaSpreadFactor {
         SF5 = 0x05,
@@ -57,7 +57,7 @@ pub mod lora {
         BW500 = 0x06,
     }
 
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
     #[repr(u8)]
     pub enum LoraCodingRate {
         CR4_5 = 0x01,
@@ -105,7 +105,7 @@ pub mod lora {
             self
         }
 
-        pub fn get_bandwidth(self) -> LoRaBandWidth {
+        pub fn get_bandwidth(&self) -> LoRaBandWidth {
             self.bandwidth
         }
     }
