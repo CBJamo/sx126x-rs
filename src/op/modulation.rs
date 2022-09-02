@@ -19,7 +19,9 @@ pub mod gfsk {
 }
 
 pub mod lora {
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    use clap::{Args, ValueEnum};
+
+    #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
     #[repr(u8)]
     pub enum LoRaSpreadFactor {
         SF5 = 0x05,
@@ -32,7 +34,7 @@ pub mod lora {
         SF12 = 0x0C,
     }
 
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
     #[repr(u8)]
     pub enum LoRaBandWidth {
         /// 7.81 kHz
@@ -57,7 +59,7 @@ pub mod lora {
         BW500 = 0x06,
     }
 
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
     #[repr(u8)]
     pub enum LoraCodingRate {
         CR4_5 = 0x01,
@@ -66,12 +68,16 @@ pub mod lora {
         CR4_8 = 0x04,
     }
 
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, Args)]
     pub struct LoraModParams {
+        #[clap(arg_enum, value_parser)]
         spread_factor: LoRaSpreadFactor,
+        #[clap(arg_enum, value_parser)]
         bandwidth: LoRaBandWidth,
+        #[clap(arg_enum, value_parser)]
         coding_rate: LoraCodingRate,
         /// LowDataRateOptimize
+        #[clap(short, value_parser, default_value_t = false)]
         low_dr_opt: bool,
     }
 

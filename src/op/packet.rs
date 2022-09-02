@@ -35,6 +35,8 @@ pub mod gfsk {
 }
 
 pub mod lora {
+    use clap::{Args, ValueEnum};
+
     #[allow(dead_code)]
     #[derive(Debug)]
     pub struct LoRaPacketStatus {
@@ -72,7 +74,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
     pub enum LoRaHeaderType {
         /// Variable length packet (explicit header)
         VarLen = 0x00,
@@ -81,7 +83,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
     pub enum LoRaCrcType {
         /// CRC off
         CrcOff = 0x00,
@@ -90,7 +92,7 @@ pub mod lora {
     }
 
     #[repr(u8)]
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq, ValueEnum)]
     pub enum LoRaInvertIq {
         /// Standard IQ setup
         Standard = 0x00,
@@ -98,23 +100,28 @@ pub mod lora {
         Inverted = 0x01,
     }
 
-    #[derive(Copy, Clone, Debug, PartialEq)]
+    #[derive(Copy, Clone, Debug, PartialEq, Args)]
     pub struct LoRaPacketParams {
         /// preamble length: number of symbols sent as preamble
         /// The preamble length is a 16-bit value which represents
         /// the number of LoRa® symbols which will be sent by the radio.
+        #[clap(value_parser)]
         preamble_len: u16, // 1, 2
         /// Header type. When the byte headerType is at 0x00,
         /// the payload length, coding rate and the header
         /// CRC will be added to the LoRa® header and transported
         /// to the receiver.
+        #[clap(arg_enum, value_parser)]
         header_type: LoRaHeaderType, // 3
         /// Size of the payload (in bytes) to transmit or maximum size of the
         /// payload that the receiver can accept.
+        #[clap(value_parser)]
         payload_len: u8, // 4
         /// CRC type
+        #[clap(arg_enum, value_parser)]
         crc_type: LoRaCrcType, // 5
         /// Invert IW
+        #[clap(arg_enum, value_parser)]
         invert_iq: LoRaInvertIq,
     }
 

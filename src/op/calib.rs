@@ -1,3 +1,5 @@
+use clap::ValueEnum;
+
 #[derive(Copy, Clone)]
 pub struct CalibParam {
     inner: u8,
@@ -40,7 +42,7 @@ impl CalibParam {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, ValueEnum)]
 #[repr(u16)]
 pub enum CalibImageFreq {
     MHz430_440 = 0x6B_6F,

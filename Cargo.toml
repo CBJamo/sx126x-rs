@@ -20,6 +20,7 @@ exclude = [
 ]
 
 [dependencies]
+clap = { version = "3.2.19", features = ["derive"] }
 embedded-hal = { version = "0.2.3", features = ["unproven"] }
 
 [dev-dependencies]

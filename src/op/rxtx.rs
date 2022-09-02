@@ -1,3 +1,5 @@
+use clap::{Args, ValueEnum};
+
 #[derive(Copy, Clone)]
 pub struct RxTxTimeout {
     inner: [u8; 3],
@@ -28,7 +30,7 @@ impl From<u32> for RxTxTimeout {
 }
 
 #[repr(u8)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum RampTime {
     /// 10us
     Ramp10u = 0x00,
@@ -48,9 +50,13 @@ pub enum RampTime {
     Ramp3400u = 0x07,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Args)]
 pub struct TxParams {
+    /// Power in dBm
+    #[clap(value_parser)]
     power_dbm: i8,
+    /// Power amplifier ramp time
+    #[clap(arg_enum, value_parser)]
     ramp_time: RampTime,
 }
 
